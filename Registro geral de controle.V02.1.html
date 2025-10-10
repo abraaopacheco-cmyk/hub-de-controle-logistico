@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Hub de Controle Logístico - CapivAiq!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* FONTE ALTERADA PARA NUNITO (ARREDONDADA) */
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        
+        /* FONTE APLICADA AO CORPO DO DOCUMENTO */
+        body { font-family: 'Nunito', sans-serif; background-color: #121212; color: #e0e0e0; scroll-behavior: smooth; }
+        
+        main label { color: #bdbdbd; }
+        
+        /* --- ESTILOS MODERNOS PARA ABAS --- */
+        .tab-button {
+            transition: all 0.3s ease-in-out;
+            color: #a0a0a0; /* Cor para abas inativas */
+        }
+        .tab-button.active {
+            background-color: #9333ea; /* Cor de fundo para aba ativa */
+            color: #ffffff; /* Cor do texto para aba ativa */
+            box-shadow: 0 4px 14px 0 rgba(147, 51, 234, 0.39);
+        }
+        .tab-button:not(.active):hover {
+            background-color: #2a2a4e; /* Cor de fundo no hover para abas inativas */
+            color: #e0e0e0;
+        }
+
+        .ring-transition { transition: box-shadow 0.3s ease-in-out; }
+        input, select, textarea {
+            background-color: #2c2a4a; /* Roxo mais escuro para inputs */
+            border-color: #4a4a6a;
+        }
+        input:focus, select:focus, textarea:focus {
+            --tw-ring-color: #9333ea;
+            border-color: #9333ea;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+        }
+        /* Estilos para a notificação "Toast" */
+        .toast-container {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 0.5rem;
+        }
+        .toast-message {
+            background-color: #2f855a; /* Verde mantido para feedback de sucesso */
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.4s ease-in-out;
+        }
+        .toast-message.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        /* Estilo customizado para o gradiente e sombra do header */
+        .header-gradient {
+            background: linear-gradient(90deg, rgba(0,198,255,1) 0%, rgba(147,51,234,1) 100%);
+        }
+        .text-shadow-custom {
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex">
+    <main class="flex-grow p-4 lg:p-6" id="main-content">
+        <header class="header-gradient p-4 rounded-xl shadow-lg mb-6 flex items-center justify-between">
+            <img alt="Logo CapivAiq" class="h-16 w-16 object-cover rounded-full bg-black/20 p-1" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1Ek1_cdUK67M0P9C_hWQToJtieQ3jxwWptPTXrj-9ielXDAHhhntX8VD_ucRXXwjNwqY&usqp=CAU" />
+            
+            <div class="text-center text-white">
+                <h1 class="text-4xl font-extrabold text-shadow-custom">Hub de Controle Logístico</h1>
+                <p class="text-sm text-white/80 mt-1">Status: <span class="font-semibold text-yellow-300">Armazenamento Local</span> | Semana: <span id="current-week">...</span></p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button onclick="clearAllRecords()" class="bg-black/20 hover:bg-black/40 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 flex items-center text-xs">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Limpar Registros
+                </button>
+                <img alt="Logo Aiq Entrega" class="w-20 h-auto" src="https://aiqentrega.zendesk.com/hc/theming_assets/01HZPB4H3EGBVW7DWEEVDR9T8P" />
+            </div>
+        </header>
+
+        <div class="mb-6">
+            <nav class="flex space-x-2 bg-[#1a1a2e] p-1.5 rounded-xl w-fit" aria-label="Tabs">
+                <button id="tab-btn-dashboard" class="tab-button active py-2 px-6 rounded-lg font-semibold text-base" onclick="switchTab('dashboard')">Painel de Controle</button>
+                <button id="tab-btn-forms" class="tab-button py-2 px-6 rounded-lg font-semibold text-base" onclick="switchTab('forms')">Adicionar Registros</button>
+            </nav>
+        </div>
+
+        <div id="tab-content-dashboard">
+             <div class="flex flex-wrap gap-4 justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-200">Visão Geral das Praças</h2>
+                <div class="flex flex-wrap gap-2">
+                    <button class="bg-[#00c6ff] hover:bg-[#00a5d2] text-black font-semibold py-2 px-3 rounded-lg text-sm" onclick="generateDailyReport()">Relatório do Dia</button>
+                    <button class="bg-[#00c6ff] hover:bg-[#00a5d2] text-black font-semibold py-2 px-3 rounded-lg text-sm" onclick="generateWeeklyReport()">Relatório da Semana</button>
+                    <button class="bg-[#9333ea] hover:bg-[#7e22ce] text-white font-semibold py-2 px-3 rounded-lg text-sm" onclick="generateCombinedReport()">Relatório Geral</button>
+                </div>
+            </div>
+            <div class="bg-[#1a1a2e] p-4 rounded-xl shadow-lg mb-6 flex flex-wrap items-end gap-4">
+                <div class="flex-grow"><label for="start-date" class="text-sm font-medium text-gray-400">Filtrar por Período</label><div class="flex items-center gap-2 mt-1"><span class="text-gray-400">De:</span><input type="date" id="start-date" class="w-full rounded-lg border-gray-600 p-2 text-white"><span class="text-gray-400">Até:</span><input type="date" id="end-date" class="w-full rounded-lg border-gray-600 p-2 text-white"></div></div>
+                <div class="flex gap-2">
+                    <button id="apply-filter-btn" class="bg-[#9333ea] hover:bg-[#7e22ce] text-white font-semibold py-2 px-4 rounded-lg">Filtrar</button>
+                    <button id="clear-filter-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg">Limpar</button>
+                </div>
+            </div>
+            <div class="mb-4">
+                <input type="search" id="city-search-input" placeholder="🔍 Buscar cidade..." class="w-full rounded-lg border-gray-600 p-3 text-white placeholder-gray-400">
+            </div>
+            <div id="dashboard-container" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            </div>
+             <p id="no-search-results" class="text-gray-500 col-span-full text-center mt-4 hidden">Nenhuma cidade encontrada.</p>
+        </div>
+
+        <div id="tab-content-forms" class="hidden">
+            <div class="bg-[#1a1a2e] p-6 rounded-xl shadow-lg mb-8">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-200">Registrar Operação de Praça</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openUserModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">Gerenciar Usuários</button>
+                        <button onclick="openCityModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">Gerenciar Cidades</button>
+                    </div>
+                 </div>
+                 <form id="push-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
+                    <div><label for="user-select" class="block text-sm font-medium mb-1">Usuário</label><select id="user-select" required class="w-full rounded-lg p-3"></select></div>
+                    <div><label for="city-name" class="block text-sm font-medium mb-1">Nome da Praça</label><input type="text" id="city-name" list="city-list" required class="w-full rounded-lg p-3"><datalist id="city-list"></datalist></div>
+                    <div><div class="flex justify-between items-center mb-1"><label for="action-select" class="block text-sm font-medium">Ação de Push</label><button type="button" onclick="openPushActionsModal()" class="text-xs text-[#00c6ff] hover:text-[#00a5d2]">Gerenciar</button></div><select id="action-select" class="w-full rounded-lg p-3"></select></div>
+                    <div><label for="reason-select" class="block text-sm font-medium mb-1">Motivo</label><select id="reason-select" class="w-full rounded-lg p-3"><option value="Falta de entregadores">Falta de entregadores</option><option value="Demora no aceite">Demora no aceite</option><option value="Resistencia com Loja">Resistência com Loja</option><option value="Praça zerada">Praça zerada</option><option value="Outro">Outro</option></select></div>
+                    <button type="submit" class="w-full bg-[#9333ea] hover:bg-[#7e22ce] text-white font-semibold py-3 px-4 rounded-lg">Enviar Push</button>
+                </form>
+                 <div class="mt-6 border-t border-gray-600 pt-4"><h3 class="text-lg font-semibold text-yellow-400 mb-2">Taxas Ativas Atualmente</h3><div id="active-fees-container" class="space-y-2"><p class="text-gray-500">Nenhuma taxa ativa no momento.</p></div></div>
+            </div>
+            
+            <div class="mt-8 border-t border-gray-700 pt-6">
+                <h2 class="text-2xl font-bold text-gray-200 mb-4">Registrar Evento de Pedido Específico</h2>
+                <div class="mb-4">
+                    <label for="responsible-user-select" class="block text-sm font-medium mb-1 text-gray-300">Usuário Responsável pelo Registro</label>
+                    <select id="responsible-user-select" required class="w-full max-w-sm rounded-lg p-3 bg-[#2c2a4a] border-gray-600"></select>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div id="problem-form-container" class="bg-[#1a1a2e] p-6 rounded-xl shadow-lg border-t-4 border-red-500">
+                        <h3 id="problem-form-title" class="text-xl font-bold mb-4 text-red-500">⚠️ Atraso na Loja</h3>
+                        <form class="space-y-4" id="form-problem">
+                            <fieldset class="pb-2"><legend class="text-sm font-medium text-gray-400">Tipo de Problema</legend><div class="flex items-center space-x-4 mt-2"><label class="flex items-center"><input type="radio" name="problem_type" value="atraso_loja" checked class="h-4 w-4 text-red-500 bg-gray-700"><span class="ml-2">⚠️ Atraso na Loja</span></label><label class="flex items-center"><input type="radio" name="problem_type" value="bo_entrega" class="h-4 w-4 text-orange-500 bg-gray-700"><span class="ml-2">🛵 B.O. com Entrega</span></label></div></fieldset>
+                            <div id="atraso-loja-fields">
+                                <div><label for="delay-store-name" class="block text-sm font-medium">Nome da Loja</label><input type="text" id="delay-store-name" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                <div><label for="delay-city" class="block text-sm font-medium">Cidade</label><input type="text" id="delay-city" list="city-list" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                <div><label for="delay-order-id" class="block text-sm font-medium">ID do Pedido</label><input type="text" id="delay-order-id" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label for="delay-online" class="block text-sm font-medium">Online</label><input type="number" id="delay-online" min="0" class="mt-1 block w-full rounded-lg p-3"></div>
+                                    <div><label for="delay-enroute" class="block text-sm font-medium">Em Rota</label><input type="number" id="delay-enroute" min="0" class="mt-1 block w-full rounded-lg p-3"></div>
+                                </div>
+                                <div><label for="delay-notes" class="block text-sm font-medium">Observação</label><textarea id="delay-notes" rows="2" class="mt-1 block w-full rounded-lg p-3"></textarea></div>
+                            </div>
+                            <div id="bo-entrega-fields" class="hidden space-y-4">
+                                <div><label for="bo-paste-data" class="block text-sm font-medium">Cole os dados do entregador aqui</label><textarea id="bo-paste-data" rows="4" class="mt-1 block w-full rounded-lg p-3 font-mono text-xs" placeholder="Cole os dados aqui para preenchimento automático..."></textarea></div>
+                                <div><label for="bo-entregador" class="block text-sm font-medium">Entregador</label><input type="text" id="bo-entregador" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label for="bo-telefone" class="block text-sm font-medium">Telefone</label><input type="tel" id="bo-telefone" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                    <div><label for="bo-id-entrega" class="block text-sm font-medium">ID da Entrega</label><input type="text" id="bo-id-entrega" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                </div>
+                                <div><label for="bo-city" class="block text-sm font-medium">Cidade</label><input type="text" id="bo-city" list="city-list" required class="mt-1 block w-full rounded-lg p-3"></div>
+                                <div><label for="bo-acao1" class="block text-sm font-medium">Ação 1 (MB Enviado)</label><input type="text" id="bo-acao1" placeholder="Qual MB foi enviado?" class="mt-1 block w-full rounded-lg p-3"></div>
+                                <div><label for="bo-acao2" class="block text-sm font-medium">Ação 2 (Resultado)</label><select id="bo-acao2" class="w-full rounded-lg p-3 mt-1"><option>Pedido Cancelado</option><option>Pedido Realocado</option><option>Cancelado pelo Suporte</option><option>Entregue</option><option>Não Entregue</option><option>Analisado</option></select></div>
+                                <div><label for="bo-resultado-entregador" class="block text-sm font-medium">Resultado com Entregador</label><select id="bo-resultado-entregador" class="w-full rounded-lg p-3 mt-1"><option>Orientado</option><option>Suspenso</option><option>Bloqueado</option><option>Analisado</option></select></div>
+                            </div>
+                            <button type="submit" id="problem-submit-btn" class="w-full bg-red-600 hover:bg-red-700 font-semibold py-3 px-4 rounded-lg">Registrar Atraso</button>
+                        </form>
+                    </div>
+                    <div class="bg-[#1a1a2e] p-6 rounded-xl shadow-lg border-t-4 border-yellow-500"><h3 class="text-xl font-bold mb-4 text-yellow-500">🚧 Resistência no Aceite</h3><form class="space-y-4" id="form-resistance"><div><label for="resistance-paste-data" class="block text-sm font-medium">Cole os dados do pedido aqui</label><textarea id="resistance-paste-data" rows="4" class="mt-1 block w-full rounded-lg p-3 font-mono text-xs" placeholder="Cole aqui para preenchimento automático..."></textarea></div><div><label for="resistance-store-name" class="block text-sm font-medium">Nome da Loja</label><input type="text" id="resistance-store-name" required class="mt-1 block w-full rounded-lg p-3"></div><div><label for="resistance-city" class="block text-sm font-medium">Cidade</label><input type="text" id="resistance-city" list="city-list" required class="mt-1 block w-full rounded-lg p-3"></div><div><label for="resistance-order-id" class="block text-sm font-medium">ID do Pedido</label><input type="text" id="resistance-order-id" required class="mt-1 block w-full rounded-lg p-3"></div><fieldset><legend class="text-sm font-medium text-gray-400">Motivo da Resistência</legend><div class="grid grid-cols-2 gap-2 mt-2 text-sm"><label class="flex items-center"><input type="radio" name="resistance-reason" value="B.O com Loja" required class="h-4 w-4 text-yellow-500 bg-gray-700 border-gray-600"><span class="ml-2">B.O com Loja</span></label><label class="flex items-center"><input type="radio" name="resistance-reason" value="Valor de taxa" class="h-4 w-4 text-yellow-500 bg-gray-700 border-gray-600"><span class="ml-2">Valor de taxa</span></label><label class="flex items-center"><input type="radio" name="resistance-reason" value="Falta de entregadores" class="h-4 w-4 text-yellow-500 bg-gray-700 border-gray-600"><span class="ml-2">Falta de entregadores</span></label><label class="flex items-center"><input type="radio" name="resistance-reason" value="Praça zerada" class="h-4 w-4 text-yellow-500 bg-gray-700 border-gray-600"><span class="ml-2">Praça zerada</span></label></div></fieldset><button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 font-semibold py-3 px-4 rounded-lg">Registrar Resistência</button></form></div>
+                    <div id="success-card" class="bg-[#1a1a2e] p-6 rounded-xl shadow-lg border-t-4 border-green-500 ring-transition"><h3 class="text-xl font-bold mb-4 text-green-500">✅ Sucesso na Alocação</h3><form class="space-y-4" id="form-success"><div><label for="success-store-name" class="block text-sm font-medium">Nome da Loja</label><input type="text" id="success-store-name" required class="mt-1 block w-full rounded-lg p-3"></div><div><label for="success-city" class="block text-sm font-medium">Cidade</label><input type="text" id="success-city" list="city-list" required class="mt-1 block w-full rounded-lg p-3"></div><div><label for="success-order-id" class="block text-sm font-medium">ID do Pedido</label><input type="text" id="success-order-id" required class="mt-1 block w-full rounded-lg p-3"></div><fieldset><legend class="text-sm font-medium text-gray-400 mb-2">Engajou com</legend><div class="grid grid-cols-2 gap-2 text-sm"><label class="flex items-center"><input type="checkbox" name="engagement-action" value="engajamento neutro" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">engajamento neutro</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="10%" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">10%</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="20%" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">20%</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="30%" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">30%</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="40%" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">40%</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="R$2,00" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">R$2,00</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="R$3,00" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">R$3,00</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="R$4,00" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">R$4,00</span></label><label class="flex items-center"><input type="checkbox" name="engagement-action" value="Agrupamento" class="h-4 w-4 text-green-500 rounded bg-gray-700 border-gray-600"><span class="ml-2">Agrupamento</span></label></div></fieldset><button type="submit" class="w-full bg-green-600 hover:bg-green-700 font-semibold py-3 px-4 rounded-lg">Registrar Sucesso</button></form></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="toast-container" class="toast-container"></div>
+        <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 p-4"></div>
+        <div id="city-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 p-4"></div>
+        <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 p-4"></div>
+        <div id="push-actions-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 p-4"></div>
+    </main>
+
+    <script>
+        // --- CHAVES E PADRÕES ---
+        const CAPIVAIQ_KEY = 'logisticaSamuraisData', PUSH_KEY_PREFIX = 'push-history-', CITIES_KEY = 'logisticaCidades', PUSH_ACTIONS_KEY = 'logisticaPushActions', USERS_KEY = 'logisticaUsuarios';
+        const DEFAULT_CITIES = ["Altamira", "Apucarana", "Araguaína", "Barbacena", "Barretos", "Boituva", "Campina Grande", "Campo Mourão", "Cerquilho", "Colatina", "Conselheiro Lafaiete", "Cruzeiro", "Dois Vizinhos", "Franca", "Francisco Beltrão", "Guarapuava", "Gurupi", "Ijuí", "Lavras", "Lençóis Paulista", "Leopoldina", "Linhares", "Marabá", "Maringá", "Ouro Preto", "Palmas", "Palotina", "Paraíso do Tocantins", "Parnaíba", "Pato Branco", "Pederneiras", "Porto Nacional", "Pouso Alegre", "Quatro Barras", "Redenção", "Rolante", "Santa Maria", "Santa Cruz do Sul", "São Carlos", "Sinop", "Sorriso", "Tietê", "Umuarama", "Xinguara"];
+        const DEFAULT_PUSH_ACTIONS = { "Geral": ["Push neutro", "Chuva", "Alta demanda"], "Alta Demanda (%)": ["Alta demanda de 10%", "Alta demanda de 20%", "Alta demanda de 30%"], "Taxa Mínima (R$)": ["Taxa mínima de R$3,00", "Taxa mínima de R$4,00"] };
+        const DEFAULT_USERS = ["Samuel", "Gabriel", "Matheus", "Rafael"];
+        const USER_ICON_URL = "https://aiqentrega.zendesk.com/hc/theming_assets/01HZPB4H3EGBVW7DWEEVDR9T8P";
+
+        // --- FUNÇÕES UTILITÁRIAS ---
+        const getWeekId = (date = new Date()) => { const d = new Date(date); const year = d.getFullYear(); const startOfYear = new Date(year, 0, 1); const days = Math.floor((d - startOfYear) / 864e5); return `${year}-${String(Math.ceil((days + startOfYear.getDay() + 1) / 7)).padStart(2, '0')}`; };
+        const getTodayPushKey = () => `${PUSH_KEY_PREFIX}${new Date().toISOString().split('T')[0]}`;
+        const isFeeAction = (a) => a.includes('%') || a.includes('R$');
+        const formatTimeDiff = (ms) => { if (ms < 0 || isNaN(ms)) return '---'; const s = Math.floor(ms / 1000); return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ${s%60}s`; };
+        function switchTab(tabName) { ['dashboard', 'forms'].forEach(t => { document.getElementById(`tab-content-${t}`).classList.toggle('hidden', t !== tabName); document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tabName); }); }
+        
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 100);
+            setTimeout(() => { toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove()); }, 2000);
+        }
+
+        // --- LÓGICA DE DADOS (CARREGAR/SALVAR) ---
+        function buildStoreCityMap() { try { const allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); storeCityMap = {}; allLogs.forEach(log => { if (log.storeName && log.storeName.trim() && log.city && log.city.trim() !== 'N/A') { storeCityMap[log.storeName.trim()] = log.city; } }); } catch (e) { console.error("Erro ao construir mapa de lojas:", e); storeCityMap = {}; } }
+        function saveCapivaiqLog(newLog) { let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); allLogs.push(newLog); localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs)); buildStoreCityMap(); }
+        function savePushData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+        function getCities() { return JSON.parse(localStorage.getItem(CITIES_KEY) || '[]').sort((a, b) => a.localeCompare(b)); }
+        function saveCities(cities) { localStorage.setItem(CITIES_KEY, JSON.stringify(cities.sort((a, b) => a.localeCompare(b)))); }
+        function getUsers() { return JSON.parse(localStorage.getItem(USERS_KEY) || '[]').sort((a, b) => a.localeCompare(b)); }
+        function saveUsers(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users.sort((a, b) => a.localeCompare(b)))); }
+        function getPushActions() { return JSON.parse(localStorage.getItem(PUSH_ACTIONS_KEY) || '{}'); }
+        function savePushActions(actions) { localStorage.setItem(PUSH_ACTIONS_KEY, JSON.stringify(actions)); }
+
+        // --- LÓGICA DE AÇÕES (APAGAR/DESATIVAR/ENVIAR/LIMPAR) ---
+        const refreshView = () => { const currentStartDate = document.getElementById('start-date').value; if (currentStartDate) { renderFilteredView(); } else { renderCurrentDayView(); } };
+        window.clearAllRecords = function() { const confirmationMessage = "ATENÇÃO!\n\nIsso apagará TODOS os registros de eventos e operações de praça.\n\nEsta ação não pode ser desfeita. Deseja continuar?"; if (confirm(confirmationMessage)) { localStorage.removeItem(CAPIVAIQ_KEY); Object.keys(localStorage).filter(k => k.startsWith(PUSH_KEY_PREFIX)).forEach(k => localStorage.removeItem(k)); location.reload(); } }
+        window.deletePushRecord = function(recordId, cityName, dateKey) { if (!confirm(`Apagar este registro de operação?`)) return; let pushData = JSON.parse(localStorage.getItem(dateKey) || '{}'); if (pushData[cityName]) { pushData[cityName] = pushData[cityName].filter(p => p.id !== recordId); if (pushData[cityName].length === 0) delete pushData[cityName]; savePushData(dateKey, pushData); refreshView(); } }
+        window.deleteCapivaiqRecord = function(timestamp) { if (!confirm("Apagar este registro de evento?")) return; let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs.filter(l => l.timestamp !== timestamp))); refreshView(); }
+        window.deactivateFee = function(recordId, cityName, dateKey) { let pushData = JSON.parse(localStorage.getItem(dateKey) || '{}'); if (pushData[cityName]) { const fee = pushData[cityName].find(p => p.id === recordId); if (fee) { fee.isActive = false; fee.deactivatedAt = new Date().toISOString(); savePushData(dateKey, pushData); refreshView(); } } }
+        window.sendToSuccessForm = function(data) { const parsedData = JSON.parse(decodeURIComponent(data)); document.getElementById('success-order-id').value = parsedData.orderId || ''; document.getElementById('success-store-name').value = parsedData.storeName || ''; document.getElementById('success-city').value = parsedData.city || ''; switchTab('forms'); const successCard = document.getElementById('success-card'); successCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); successCard.classList.add('ring-2', 'ring-green-500'); setTimeout(() => { successCard.classList.remove('ring-2', 'ring-green-500'); }, 2500); }
+        window.updateBoStatus = function(timestamp, newStatus) { let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); const logIndex = allLogs.findIndex(l => l.timestamp === timestamp); if (logIndex !== -1) { allLogs[logIndex].bo_status = newStatus; allLogs[logIndex].bo_status_timestamp = new Date().toISOString(); localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs)); refreshView(); } else { alert('Erro: Registro não encontrado.'); } }
+        window.removeCity = function(cityName) { if (!confirm(`Remover "${cityName}" da lista?`)) return; let cities = getCities(); saveCities(cities.filter(c => c !== cityName)); renderCityListInModal(); populateCityDatalist(); }
+        window.removeUser = function(userName) { if (!confirm(`Remover "${userName}" da lista?`)) return; let users = getUsers(); saveUsers(users.filter(u => u !== userName)); renderUserListInModal(); populateUsersSelects(); }
+        window.removePushAction = function(group, action) { if (!confirm(`Remover "${action}" do grupo "${group}"?`)) return; let actions = getPushActions(); actions[group] = actions[group].filter(a => a !== action); if (actions[group].length === 0) { delete actions[group]; } savePushActions(actions); renderPushActionsInModal(); populatePushActionsSelect(); }
+
+        // --- LÓGICA DE RENDERIZAÇÃO ---
+        function renderActiveFees(pushHistory) { const container = document.getElementById('active-fees-container'); container.innerHTML = ''; let hasActiveFee = false; Object.entries(pushHistory).forEach(([city, pushes]) => { pushes.forEach(p => { if (p.isActive) { hasActiveFee = true; const sentTime = new Date(p.sentAt).toLocaleTimeString('pt-BR'); container.innerHTML += `<div class="bg-gray-800 p-3 rounded-md flex justify-between items-center text-sm"><span><strong>${city}:</strong> ${p.action} (Ativa desde ${sentTime})</span><button onclick="deactivateFee(${p.id}, '${city}', '${getTodayPushKey()}')" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded-md">Desativar</button></div>`; } }); }); if (!hasActiveFee) container.innerHTML = '<p class="text-gray-500">Nenhuma taxa ativa no momento.</p>'; }
+
+        function renderDashboard(logsToRender, pushesToRender, periodLabel) {
+            const container = document.getElementById('dashboard-container');
+            container.innerHTML = '';
+            
+            const allLogs = logsToRender.delays.concat(logsToRender.resistances, logsToRender.successes);
+            const allCities = new Set([...Object.keys(pushesToRender), ...allLogs.map(l => l.city)]);
+
+            if (allCities.size === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center mt-4">Nenhum registro encontrado para o período selecionado.</p>';
+                return;
+            }
+
+            Array.from(allCities).sort().forEach(city => {
+                const cityPushes = pushesToRender[city] || [];
+                const cityLogs = allLogs.filter(l => l.city === city);
+                const cityBOs = cityLogs.filter(l => l.type === 'delay' && l.subtype === 'bo_entrega');
+                const cityDelays = cityLogs.filter(l => l.type === 'delay' && l.subtype !== 'bo_entrega');
+                const cityResistances = cityLogs.filter(l => l.type === 'resistance');
+                const citySuccesses = cityLogs.filter(l => l.type === 'success');
+                
+                const deleteBtn = (action) => `<button onclick="${action}" class="w-6 h-6 bg-gray-700 text-white rounded-md hover:bg-red-600 transition-colors flex-shrink-0 text-xs">X</button>`;
+                const renderLogItem = (log, type, icon, color) => { const logData = encodeURIComponent(JSON.stringify({orderId: log.orderId, storeName: log.storeName, city: log.city})); let buttons = `<div class="flex items-center gap-2">${deleteBtn(`deleteCapivaiqRecord(${log.timestamp})`)}</div>`; if (type !== 'Sucesso') { buttons = `<div class="flex items-center gap-2"><button onclick="sendToSuccessForm('${logData}')" class="bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-1 px-2 rounded-md" title="Concluir Registro">Concluir</button>${deleteBtn(`deleteCapivaiqRecord(${log.timestamp})`)}</div>`; } const recordTime = new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); const userText = log.user ? `<span class="inline-flex items-center gap-1.5">(por <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${log.user}</strong>)</span>` : ''; return `<div class="bg-${color}-900/50 p-2 rounded-md flex justify-between items-center gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - ${icon} ${type}: ${log.detail || ''} ${userText}</span> ${buttons}</div>`; };
+                
+                let cardHTML = `<div class="bg-[#1a1a2e] rounded-xl shadow-lg flex flex-col city-card"><h3 class="bg-[#2a2a4e] text-[#00c6ff] p-4 text-center font-bold text-xl">${city}</h3><div class="p-4 space-y-4 flex-grow">`;
+                
+                cardHTML += `<div><h4 class="font-semibold text-[#9333ea] border-b border-gray-700 pb-1 mb-2">Operações de Praça (${periodLabel})</h4><div class="space-y-2">`;
+                if (cityPushes.length > 0) { cityPushes.forEach(p => { const sent = new Date(p.sentAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); const isFee = isFeeAction(p.action); const label = isFee ? 'Ativada' : 'Enviado'; const pushDateKey = p.date ? PUSH_KEY_PREFIX + p.date : getTodayPushKey(); cardHTML += `<div class="bg-[#2a2a4e]/60 p-2 rounded-md flex justify-between items-center gap-2 text-sm"><div><p><strong>Ação:</strong> ${p.action} (${p.reason})</p><p class="text-xs text-gray-400">${label} às ${sent}</p>`; if (p.user) { cardHTML += `<p class="text-xs text-gray-400 flex items-center gap-1.5">por: <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${p.user}</strong></p>`; } if (isFee) { if (!p.isActive && p.deactivatedAt) { cardHTML += `<p class="text-xs text-yellow-400">Desativada. Duração: ${formatTimeDiff(new Date(p.deactivatedAt) - new Date(p.sentAt))}</p>`; } else if (p.isActive) { cardHTML += `<p class="text-xs text-green-400">Taxa ativa.</p>`; } } cardHTML += `</div> ${deleteBtn(`deletePushRecord(${p.id},'${city}', '${pushDateKey}')`)}</div>`; }); }
+                if (cityBOs.length > 0) { cityBOs.forEach(d => { const recordTime = new Date(d.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); const deleteButton = deleteBtn(`deleteCapivaiqRecord(${d.timestamp})`); const acao1Text = d.acao1 ? `<br><span class="text-xs text-gray-400 font-light italic">${d.acao1}</span>` : ''; const userText = d.user ? `<span class="inline-flex items-center gap-1.5">(por <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${d.user}</strong>)</span>` : ''; let itemHTML = ''; if (!d.bo_status) { const detail = `B.O. #${d.id_entrega} (${d.city}) c/ ${d.entregador}${acao1Text}`; const actionButtons = `<div class="flex items-center gap-1 mt-2"><button onclick="updateBoStatus(${d.timestamp}, 'finalizado')" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded-md">✅ Finalizado</button><button onclick="updateBoStatus(${d.timestamp}, 'cancelado')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md">❌ Cancelado</button></div>`; itemHTML = `<div class="bg-orange-900/50 p-2 rounded-md"><div class="flex justify-between items-start gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - 🛵 ${detail} ${userText}</span> ${deleteButton}</div>${actionButtons}</div>`; } else { const statusTime = new Date(d.bo_status_timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); let bgColor, detail; if (d.bo_status === 'finalizado') { bgColor = 'bg-green-900/50'; detail = `✅ B.O. #${d.id_entrega} (${d.city}) - FINALIZADO às ${statusTime}${acao1Text}`; } else { bgColor = 'bg-red-900/50'; detail = `❌ B.O. #${d.id_entrega} (${d.city}) - CANCELADO às ${statusTime}${acao1Text}`; } itemHTML = `<div class="${bgColor} p-2 rounded-md flex justify-between items-center gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - ${detail} ${userText}</span>${deleteButton}</div>`; } cardHTML += itemHTML; }); }
+                if (cityPushes.length === 0 && cityBOs.length === 0) { cardHTML += `<p class="text-sm text-gray-500">Nenhuma.</p>`; }
+                cardHTML += `</div></div>`;
+                
+                cardHTML += `<div><h4 class="font-semibold text-[#00c6ff] border-b border-gray-700 pb-1 mb-2">Registros de Pedido (${periodLabel})</h4>`;
+                const weeklyEvents = cityDelays.length + cityResistances.length + citySuccesses.length;
+                if (weeklyEvents > 0) {
+                    cityDelays.forEach(d => { d.detail = `Atraso Loja ${d.storeName} (#${d.orderId})`; cardHTML += renderLogItem(d, 'Problema', '⚠️', 'red'); });
+                    cityResistances.forEach(r => { r.detail = `Resistência: Loja ${r.storeName} (#${r.orderId}) - Motivo: ${r.reason}`; cardHTML += renderLogItem(r, 'Resistência', '🚧', 'yellow'); });
+                    citySuccesses.forEach(s => { s.detail = `Sucesso: Loja ${s.storeName} (#${s.orderId}) - Engajou com: ${s.engagementAction}`; cardHTML += renderLogItem(s, 'Sucesso', '✅', 'green'); });
+                } else { cardHTML += `<p class="text-sm text-gray-500">Nenhum.</p>`; }
+                cardHTML += `</div></div></div>`;
+                container.innerHTML += cardHTML;
+            });
+        }
+
+        function renderCurrentDayView() {
+            document.getElementById('start-date').value = '';
+            document.getElementById('end-date').value = '';
+
+            const todayPushKey = getTodayPushKey();
+            const currentWeekId = getWeekId();
+
+            const pushHistory = JSON.parse(localStorage.getItem(todayPushKey)) || {};
+            const allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]');
+            const weeklyLogs = {
+                delays: allLogs.filter(l => l.weekId === currentWeekId && l.type === 'delay'),
+                resistances: allLogs.filter(l => l.weekId === currentWeekId && l.type === 'resistance'),
+                successes: allLogs.filter(l => l.weekId === currentWeekId && l.type === 'success')
+            };
+
+            renderDashboard(weeklyLogs, pushHistory, 'Hoje/Semana');
+            renderActiveFees(pushHistory);
+        }
+
+        function renderFilteredView() {
+            let startDate = document.getElementById('start-date').value;
+            let endDate = document.getElementById('end-date').value;
+
+            if (!startDate) {
+                alert('Por favor, selecione uma data de início.');
+                return;
+            }
+            if (!endDate) {
+                endDate = startDate; // Se não houver data final, filtra por um único dia
+            }
+
+            const start = new Date(startDate + 'T00:00:00');
+            const end = new Date(endDate + 'T23:59:59');
+
+            const allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]');
+            const filteredLogsData = allLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                return logDate >= start && logDate <= end;
+            });
+            const filteredLogs = {
+                delays: filteredLogsData.filter(l => l.type === 'delay'),
+                resistances: filteredLogsData.filter(l => l.type === 'resistance'),
+                successes: filteredLogsData.filter(l => l.type === 'success')
+            };
+
+            const filteredPushes = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(PUSH_KEY_PREFIX)) {
+                    const dateStr = key.replace(PUSH_KEY_PREFIX, '');
+                    const pushDate = new Date(dateStr + 'T12:00:00');
+                    if (pushDate >= start && pushDate <= end) {
+                        const dateData = JSON.parse(localStorage.getItem(key));
+                        for (const city in dateData) {
+                            if (!filteredPushes[city]) filteredPushes[city] = [];
+                            dateData[city].forEach(p => {
+                                p.date = dateStr;
+                                filteredPushes[city].push(p);
+                            });
+                        }
+                    }
+                }
+            }
+            const periodLabel = start.toLocaleDateString('pt-BR') === end.toLocaleDateString('pt-BR')
+                ? start.toLocaleDateString('pt-BR')
+                : `${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}`;
+            
+            renderDashboard(filteredLogs, filteredPushes, periodLabel);
+            document.getElementById('active-fees-container').innerHTML = '<p class="text-gray-500">Taxas ativas são exibidas apenas na visão do dia atual.</p>';
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!localStorage.getItem(CITIES_KEY)) saveCities(DEFAULT_CITIES);
+            if (!localStorage.getItem(PUSH_ACTIONS_KEY)) savePushActions(DEFAULT_PUSH_ACTIONS);
+            if (!localStorage.getItem(USERS_KEY)) saveUsers(DEFAULT_USERS);
+            
+            document.getElementById('current-week').textContent = getWeekId();
+            buildStoreCityMap();
+            populateCityDatalist();
+            populatePushActionsSelect();
+            populateUsersSelects();
+            renderCurrentDayView();
+
+            document.getElementById('apply-filter-btn').addEventListener('click', renderFilteredView);
+            document.getElementById('clear-filter-btn').addEventListener('click', renderCurrentDayView);
+            
+            document.querySelectorAll('input[name="problem_type"]').forEach(radio => { radio.addEventListener('change', (e) => { const type = e.target.value; const isAtraso = type === 'atraso_loja'; document.getElementById('atraso-loja-fields').classList.toggle('hidden', !isAtraso); document.getElementById('bo-entrega-fields').classList.toggle('hidden', isAtraso); document.getElementById('delay-order-id').required = isAtraso; document.getElementById('delay-store-name').required = isAtraso; document.getElementById('delay-city').required = isAtraso; document.getElementById('bo-entregador').required = !isAtraso; document.getElementById('bo-telefone').required = !isAtraso; document.getElementById('bo-id-entrega').required = !isAtraso; document.getElementById('bo-city').required = !isAtraso; const container = document.getElementById('problem-form-container'), title = document.getElementById('problem-form-title'), button = document.getElementById('problem-submit-btn'); container.className = container.className.replace(/border-(red|orange)-500/, isAtraso ? 'border-red-500' : 'border-orange-500'); title.className = title.className.replace(/text-(red|orange)-500/, isAtraso ? 'text-red-500' : 'text-orange-500'); button.className = button.className.replace(/bg-(red|orange)-600/, isAtraso ? 'bg-red-600' : 'bg-orange-600').replace(/hover:bg-(red|orange)-700/, isAtraso ? 'hover:bg-red-700' : 'hover:bg-orange-700'); title.textContent = isAtraso ? '⚠️ Atraso na Loja' : '🛵 B.O. com Entrega'; button.textContent = isAtraso ? 'Registrar Atraso' : 'Registrar B.O.'; }); });
+            document.getElementById('bo-paste-data').addEventListener('input', (e) => { const text = e.target.value; const nameMatch = text.match(/^(.+?)\s*#/); const phoneMatch = text.match(/\(?(\d{2})\)?\s*9?\s*(\d{4,5})[-\s]?(\d{4})/); const deliveryIdMatch = text.match(/entrega\s*#([a-f0-9]+)/); if (nameMatch) document.getElementById('bo-entregador').value = nameMatch[1].trim(); if (phoneMatch) document.getElementById('bo-telefone').value = `(${phoneMatch[1]}) 9 ${phoneMatch[2]}-${phoneMatch[3]}`; if (deliveryIdMatch) document.getElementById('bo-id-entrega').value = '#' + deliveryIdMatch[1]; });
+            document.getElementById('resistance-paste-data').addEventListener('input', (e) => { const text = e.target.value; const orderIdMatch = text.match(/pedido\s*#(\d+)/); if (orderIdMatch) { document.getElementById('resistance-order-id').value = orderIdMatch[1]; } const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0); if (lines.length > 0) { const potentialStoreName = lines[lines.length - 1]; const isDate = /^\d{2}\/\w+\/\d{4}/.test(potentialStoreName); const isPhoneNumber = /\(?\d{2}\)?\s*9?\s*\d{4,5}-?\d{4}/.test(potentialStoreName); if (!isDate && !isPhoneNumber) { document.getElementById('resistance-store-name').value = potentialStoreName; } } if (orderIdMatch && lines.length > 0) { document.getElementById('resistance-city').focus(); } });
+
+            const autocompleteHandler = (e) => { const storeName = e.target.value.trim(); const form = e.target.closest('form'); const cityInput = form.querySelector('[id$="-city"]'); if (storeName && storeCityMap[storeName] && cityInput && cityInput.value === '') { cityInput.value = storeCityMap[storeName]; } };
+            ['delay-store-name', 'resistance-store-name', 'success-store-name'].forEach(id => document.getElementById(id).addEventListener('input', autocompleteHandler));
+
+            document.getElementById('push-form').addEventListener('submit', (e) => { e.preventDefault(); const form = e.target, cityName = form.elements['city-name'].value.trim().replace(/\b\w/g, l => l.toUpperCase()), action = form.elements['action-select'].value, user = form.elements['user-select'].value; if (!cityName) return; const todayPushKey = getTodayPushKey(); let pushHistory = JSON.parse(localStorage.getItem(todayPushKey) || '{}'); if (isFeeAction(action) && pushHistory[cityName]) { const nowISO = new Date().toISOString(); pushHistory[cityName].forEach(p => { if (p.isActive) { p.isActive = false; p.deactivatedAt = nowISO; } }); } if (!pushHistory[cityName]) pushHistory[cityName] = []; pushHistory[cityName].push({ id: Date.now(), user, action, reason: form.elements['reason-select'].value, sentAt: new Date().toISOString(), deactivatedAt: null, isActive: isFeeAction(action) }); savePushData(todayPushKey, pushHistory); renderCurrentDayView(); form.reset(); form.elements['city-name'].focus(); showToast("Salvo com Sucesso!"); });
+            document.getElementById('form-problem').addEventListener('submit', (e) => { e.preventDefault(); const form = e.target; const problemType = form.querySelector('input[name="problem_type"]:checked').value; const now = new Date(); const data = { type: 'delay', weekId: getWeekId(now), timestamp: now.getTime(), subtype: problemType, user: document.getElementById('responsible-user-select').value }; if (problemType === 'atraso_loja') { data.orderId = form.elements['delay-order-id'].value; data.storeName = form.elements['delay-store-name'].value; data.city = form.elements['delay-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase()); data.online = form.elements['delay-online'].value; data.enRoute = form.elements['delay-enroute'].value; data.notes = form.elements['delay-notes'].value; } else { const acao1Value = form.elements['bo-acao1'].value.trim(); data.entregador = form.elements['bo-entregador'].value; data.telefone = form.elements['bo-telefone'].value; data.id_entrega = form.elements['bo-id-entrega'].value; data.city = form.elements['bo-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase()); data.acao1 = acao1Value ? 'MB🐦- ' + acao1Value : ''; data.acao2 = form.elements['bo-acao2'].value; data.resultado_entregador = form.elements['bo-resultado-entregador'].value; data.orderId = data.id_entrega; data.storeName = "N/A"; data.bo_status = null; data.bo_status_timestamp = null; } saveCapivaiqLog(data); renderCurrentDayView(); form.reset(); e.target.querySelector('#bo-paste-data').value = ''; showToast("Salvo com Sucesso!"); });
+            const handleCapivaiqForm = (form, type) => { const now = new Date(); const city = form.elements[`${type}-city`].value.trim().replace(/\b\w/g, l => l.toUpperCase()); const data = { type, weekId: getWeekId(now), timestamp: now.getTime(), orderId: form.elements[`${type}-order-id`].value, storeName: form.elements[`${type}-store-name`].value, city, user: document.getElementById('responsible-user-select').value}; if (type === 'resistance') { data.reason = form.querySelector('input[name="resistance-reason"]:checked')?.value || 'Não especificado'; } else if (type === 'success') { const engagedWith = Array.from(form.querySelectorAll('input[name="engagement-action"]:checked')).map(cb => cb.value); data.engagementAction = engagedWith.length > 0 ? engagedWith.join(', ') : 'Não especificado'; } saveCapivaiqLog(data); renderCurrentDayView(); form.reset(); if(form.id === 'form-resistance') form.querySelector('#resistance-paste-data').value = ''; showToast("Salvo com Sucesso!"); };
+            document.getElementById('form-resistance').addEventListener('submit', e => { e.preventDefault(); handleCapivaiqForm(e.target, 'resistance'); });
+            document.getElementById('form-success').addEventListener('submit', e => { e.preventDefault(); handleCapivaiqForm(e.target, 'success'); });
+            document.getElementById('city-search-input').addEventListener('input', (e) => { const searchTerm = e.target.value.toLowerCase(); const cards = document.querySelectorAll('#dashboard-container .city-card'); let visibleCount = 0; cards.forEach(card => { const cityName = card.querySelector('h3').textContent.toLowerCase(); const isVisible = cityName.includes(searchTerm); card.classList.toggle('hidden', !isVisible); if(isVisible) visibleCount++; }); document.getElementById('no-search-results').classList.toggle('hidden', visibleCount > 0 || cards.length === 0 || searchTerm.length === 0 ); });
+        });
+        
+        // --- MODALS E RELATÓRIOS ---
+        function showReportModal(title, content) { const modal = document.getElementById('report-modal'); modal.innerHTML = `<div class="bg-[#1a1a2e] p-6 rounded-lg shadow-2xl max-w-2xl w-full border-t-4 border-[#9333ea]"><h3 class="text-lg font-bold mb-3 text-[#00c6ff]">${title}</h3><div class="relative"><pre class="bg-gray-800 p-3 rounded-lg text-xs overflow-auto max-h-96 border border-gray-600 whitespace-pre-wrap">${content}</pre><button onclick="navigator.clipboard.writeText(\`${content.replace(/`/g, '\\`')}\`).then(() => showToast('Copiado!'))" class="absolute top-2 right-2 bg-[#9333ea] text-white hover:bg-[#7e22ce] px-3 py-1 rounded-md text-xs font-semibold">Copiar</button></div><button onclick="closeModal('report-modal')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 rounded-lg">Fechar</button></div>`; modal.classList.remove('hidden'); modal.classList.add('flex'); }
+        function openCityModal() { const modal = document.getElementById('city-modal'); modal.classList.remove('hidden'); modal.classList.add('flex'); renderCityListInModal(); }
+        function openUserModal() { const modal = document.getElementById('user-modal'); modal.classList.remove('hidden'); modal.classList.add('flex'); renderUserListInModal(); }
+        function openPushActionsModal() { const modal = document.getElementById('push-actions-modal'); modal.classList.remove('hidden'); modal.classList.add('flex'); renderPushActionsInModal(); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function getDailyReportText() { let output = `*Resumo de Operações do Dia - ${new Date().toLocaleDateString('pt-BR')}*\n\n`; const pushHistory = JSON.parse(localStorage.getItem(getTodayPushKey()) || '{}'); const cities = Object.keys(pushHistory).sort(); if (cities.length === 0) return output + "_Nenhuma operação registrada hoje._"; cities.forEach(city => { output += `*${city}*\n`; pushHistory[city].forEach(p => { const sent = new Date(p.sentAt).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}), label = isFeeAction(p.action) ? 'Ativada' : 'Enviado'; const userText = p.user ? ` (por ${p.user})` : ''; output += `• *${label} às ${sent}* - *Ação:* ${p.action} - *Motivo:* ${p.reason}${userText}`; if(isFeeAction(p.action) && p.deactivatedAt) { const deact = new Date(p.deactivatedAt).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); output += `\n  *- Desativada às ${deact} (Duração: ${formatTimeDiff(new Date(p.deactivatedAt)-new Date(p.sentAt))})*`; } output += '\n'; }); output += `\n`; }); return output; }
+        function getWeeklyReportText() { const allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); const currentWeekId = getWeekId(); const weeklyLogs = {delays: allLogs.filter(l => l.weekId === currentWeekId && l.type === 'delay'), resistances: allLogs.filter(l => l.weekId === currentWeekId && l.type === 'resistance'), successes: allLogs.filter(l => l.weekId === currentWeekId && l.type === 'success') }; let output = `*Resumo de Eventos da Semana - ${currentWeekId}*\n\n`; if (weeklyLogs.delays.length + weeklyLogs.resistances.length + weeklyLogs.successes.length === 0) { return output + "_Nenhum evento registrado._"; } const delaysLoja = weeklyLogs.delays.filter(l=>l.subtype !== 'bo_entrega'); const delaysBO = weeklyLogs.delays.filter(l=>l.subtype === 'bo_entrega'); output += `*⚠️ Atrasos na Loja (${delaysLoja.length})*\n`; if(delaysLoja.length>0) delaysLoja.forEach(l => { const userText = l.user ? ` (por ${l.user})` : ''; output += `• ${l.city}: Pedido #${l.orderId} (Loja: ${l.storeName})${userText}\n`; }); else output += `_Nenhum_\n`; output += `\n*🛵 B.O. com Entrega (${delaysBO.length})*\n`; if(delaysBO.length>0) delaysBO.forEach(l => { const userText = l.user ? ` (por ${l.user})` : ''; output += `• ${l.city}: Entregador ${l.entregador} - Resultado: ${l.resultado_entregador}${userText}\n`; }); else output += `_Nenhum_\n`; output += `\n*🚧 Resistências (${weeklyLogs.resistances.length})*\n`; if(weeklyLogs.resistances.length>0) weeklyLogs.resistances.forEach(l => { const userText = l.user ? ` (por ${l.user})` : ''; output += `• ${l.city}: Pedido #${l.orderId} (Loja: ${l.storeName}) - Motivo: ${l.reason || 'N/A'}${userText}\n`; }); else output += `_Nenhum_\n`; output += `\n*✅ Sucessos (${weeklyLogs.successes.length})*\n`; if(weeklyLogs.successes.length>0) weeklyLogs.successes.forEach(s => { const userText = s.user ? ` (por ${s.user})` : ''; output += `• ${s.city}: Pedido #${s.orderId} (Loja: ${s.storeName}) - Engajou com: ${s.engagementAction || 'N/A'}${userText}\n`; }); else output += `_Nenhum_\n`; return output; }
+        window.generateDailyReport = () => showReportModal('Relatório de Operações do Dia', getDailyReportText());
+        window.generateWeeklyReport = () => showReportModal('Relatório de Eventos da Semana', getWeeklyReportText());
+        window.generateCombinedReport = () => { const combined = `${getDailyReportText()}\n---------------------------------------\n\n${getWeeklyReportText()}`; showReportModal('Relatório Geral (Dia e Semana)', combined); };
+        
+        function populateCityDatalist() { const datalist = document.getElementById('city-list'); datalist.innerHTML = ''; getCities().forEach(city => datalist.innerHTML += `<option value="${city}"></option>`); }
+        function renderCityListInModal() { const container = document.getElementById('city-modal'); container.innerHTML = `<div class="bg-[#1a1a2e] p-6 rounded-lg shadow-2xl max-w-md w-full border-t-4 border-[#9333ea]"><h3 class="text-lg font-bold mb-4 text-gray-300">Gerenciar Cidades</h3><div id="city-list-manager" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div><div class="flex gap-2 mt-4"><input type="text" id="new-city-input" placeholder="Nova cidade..." class="w-full rounded-lg p-2"><button onclick="addCity()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 rounded-lg">Adicionar</button></div><button onclick="closeModal('city-modal')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 rounded-lg">Fechar</button></div>`; const listEl = document.getElementById('city-list-manager'); listEl.innerHTML = ''; getCities().forEach(city => { listEl.innerHTML += `<div class="bg-[#2a2a4e]/80 p-2 rounded-md flex justify-between items-center text-sm"><span>${city}</span><button onclick="removeCity('${city}')" class="text-red-400 hover:text-red-300 font-bold">Remover</button></div>`; }); }
+        function addCity() { const input = document.getElementById('new-city-input'); const cityName = input.value.trim().replace(/\b\w/g, l => l.toUpperCase()); if (!cityName) return; let cities = getCities(); if (cities.includes(cityName)) { alert('Esta cidade já existe!'); return; } cities.push(cityName); saveCities(cities); renderCityListInModal(); populateCityDatalist(); input.value = ''; }
+
+        function populateUsersSelects() { const selects = document.querySelectorAll('#user-select, #responsible-user-select'); selects.forEach(select => { select.innerHTML = ''; getUsers().forEach(user => select.innerHTML += `<option value="${user}">${user}</option>`); }); }
+        function renderUserListInModal() { const container = document.getElementById('user-modal'); container.innerHTML = `<div class="bg-[#1a1a2e] p-6 rounded-lg shadow-2xl max-w-md w-full border-t-4 border-[#9333ea]"><h3 class="text-lg font-bold mb-4 text-gray-300">Gerenciar Usuários</h3><div id="user-list-manager" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div><div class="flex gap-2 mt-4"><input type="text" id="new-user-input" placeholder="Novo usuário..." class="w-full rounded-lg p-2"><button onclick="addUser()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 rounded-lg">Adicionar</button></div><button onclick="closeModal('user-modal')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 rounded-lg">Fechar</button></div>`; const listEl = document.getElementById('user-list-manager'); listEl.innerHTML = ''; getUsers().forEach(user => { listEl.innerHTML += `<div class="bg-[#2a2a4e]/80 p-2 rounded-md flex justify-between items-center text-sm"><span>${user}</span><button onclick="removeUser('${user}')" class="text-red-400 hover:text-red-300 font-bold">Remover</button></div>`; }); }
+        function addUser() { const input = document.getElementById('new-user-input'); const userName = input.value.trim(); if (!userName) return; let users = getUsers(); if (users.includes(userName)) { alert('Este usuário já existe!'); return; } users.push(userName); saveUsers(users); renderUserListInModal(); populateUsersSelects(); input.value = ''; }
+
+        function populatePushActionsSelect() { const select = document.getElementById('action-select'); select.innerHTML = ''; const actions = getPushActions(); Object.entries(actions).forEach(([groupName, actionList]) => { const optgroup = document.createElement('optgroup'); optgroup.label = groupName; actionList.forEach(action => optgroup.innerHTML += `<option value="${action}">${action}</option>`); select.appendChild(optgroup); }); }
+        function openPushActionsModal() { const modal = document.getElementById('push-actions-modal'); modal.classList.remove('hidden'); modal.classList.add('flex'); renderPushActionsInModal(); }
+        function renderPushActionsInModal() { const container = document.getElementById('push-actions-modal'); let actions = getPushActions(); let groupOptions = Object.keys(actions).map(g => `<option value="${g}">${g}</option>`).join(''); let listHTML = ''; Object.entries(actions).forEach(([group, list]) => { listHTML += `<div class="mb-3"><h4 class="font-semibold text-[#00c6ff] text-sm">${group}</h4><div class="space-y-1 mt-1">`; list.forEach(action => { listHTML += `<div class="bg-[#2a2a4e]/80 p-2 rounded-md flex justify-between items-center text-sm"><span>${action}</span><button onclick="removePushAction('${group}', '${action}')" class="text-red-400 hover:text-red-300 font-bold">Remover</button></div>`; }); listHTML += `</div></div>`; }); container.innerHTML = `<div class="bg-[#1a1a2e] p-6 rounded-lg shadow-2xl max-w-lg w-full border-t-4 border-[#9333ea]"><h3 class="text-lg font-bold mb-4 text-gray-300">Gerenciar Ações de Push</h3><div class="max-h-64 overflow-y-auto pr-2">${listHTML}</div><div class="grid grid-cols-2 gap-2 mt-4 items-end"><input type="text" id="new-action-input" placeholder="Nova ação..." class="w-full rounded-lg p-2"><select id="action-group-select" class="w-full rounded-lg p-2">${groupOptions}</select></div><button onclick="addPushAction()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg mt-2">Adicionar Ação</button><button onclick="closeModal('push-actions-modal')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 rounded-lg">Fechar</button></div>`; }
+        function addPushAction() { const textInput = document.getElementById('new-action-input'); const groupSelect = document.getElementById('action-group-select'); const actionText = textInput.value.trim(); const group = groupSelect.value; if (!actionText || !group) return; let actions = getPushActions(); if (actions[group].includes(actionText)) { alert('Esta ação já existe neste grupo!'); return; } actions[group].push(actionText); savePushActions(actions); renderPushActionsInModal(); populatePushActionsSelect(); textInput.value = ''; }
+    </script>
+</body>
+
+</html>
