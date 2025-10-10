@@ -88,7 +88,8 @@
             
             <div class="flex items-center gap-4">
                 <button onclick="clearAllRecords()" class="bg-black/20 hover:bg-black/40 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 flex items-center text-xs">
-                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2
+ 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     Limpar Registros
                 </button>
                 <img alt="Logo Aiq Entrega" class="w-20 h-auto" src="https://aiqentrega.zendesk.com/hc/theming_assets/01HZPB4H3EGBVW7DWEEVDR9T8P" />
@@ -220,8 +221,27 @@
         }
 
         // --- LÓGICA DE DADOS (CARREGAR/SALVAR) ---
-        function buildStoreCityMap() { try { const allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); storeCityMap = {}; allLogs.forEach(log => { if (log.storeName && log.storeName.trim() && log.city && log.city.trim() !== 'N/A') { storeCityMap[log.storeName.trim()] = log.city; } }); } catch (e) { console.error("Erro ao construir mapa de lojas:", e); storeCityMap = {}; } }
-        function saveCapivaiqLog(newLog) { let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); allLogs.push(newLog); localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs)); buildStoreCityMap(); }
+        function buildStoreCityMap(allLogs) {
+            try {
+                storeCityMap = {};
+                allLogs.forEach(log => {
+                    if (log.storeName && log.storeName.trim() && log.city && log.city.trim() !== 'N/A') {
+                        storeCityMap[log.storeName.trim()] = log.city;
+                    }
+                });
+            } catch (e) {
+                console.error("Erro ao construir mapa de lojas:", e);
+                storeCityMap = {};
+            }
+        }
+        
+        function saveCapivaiqLog(newLog) {
+            let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]');
+            allLogs.push(newLog);
+            localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs));
+            buildStoreCityMap(allLogs);
+        }
+
         function savePushData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
         function getCities() { return JSON.parse(localStorage.getItem(CITIES_KEY) || '[]').sort((a, b) => a.localeCompare(b)); }
         function saveCities(cities) { localStorage.setItem(CITIES_KEY, JSON.stringify(cities.sort((a, b) => a.localeCompare(b)))); }
@@ -234,10 +254,33 @@
         const refreshView = () => { const currentStartDate = document.getElementById('start-date').value; if (currentStartDate) { renderFilteredView(); } else { renderCurrentDayView(); } };
         window.clearAllRecords = function() { const confirmationMessage = "ATENÇÃO!\n\nIsso apagará TODOS os registros de eventos e operações de praça.\n\nEsta ação não pode ser desfeita. Deseja continuar?"; if (confirm(confirmationMessage)) { localStorage.removeItem(CAPIVAIQ_KEY); Object.keys(localStorage).filter(k => k.startsWith(PUSH_KEY_PREFIX)).forEach(k => localStorage.removeItem(k)); location.reload(); } }
         window.deletePushRecord = function(recordId, cityName, dateKey) { if (!confirm(`Apagar este registro de operação?`)) return; let pushData = JSON.parse(localStorage.getItem(dateKey) || '{}'); if (pushData[cityName]) { pushData[cityName] = pushData[cityName].filter(p => p.id !== recordId); if (pushData[cityName].length === 0) delete pushData[cityName]; savePushData(dateKey, pushData); refreshView(); } }
-        window.deleteCapivaiqRecord = function(timestamp) { if (!confirm("Apagar este registro de evento?")) return; let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs.filter(l => l.timestamp !== timestamp))); refreshView(); }
+        
+        // CORREÇÃO: Função de apagar agora usa o ID único do registro.
+        window.deleteCapivaiqRecord = function(recordId) {
+            if (!confirm("Apagar este registro de evento?")) return;
+            let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]');
+            const updatedLogs = allLogs.filter(l => l.id !== recordId);
+            localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(updatedLogs));
+            refreshView();
+        }
+
         window.deactivateFee = function(recordId, cityName, dateKey) { let pushData = JSON.parse(localStorage.getItem(dateKey) || '{}'); if (pushData[cityName]) { const fee = pushData[cityName].find(p => p.id === recordId); if (fee) { fee.isActive = false; fee.deactivatedAt = new Date().toISOString(); savePushData(dateKey, pushData); refreshView(); } } }
         window.sendToSuccessForm = function(data) { const parsedData = JSON.parse(decodeURIComponent(data)); document.getElementById('success-order-id').value = parsedData.orderId || ''; document.getElementById('success-store-name').value = parsedData.storeName || ''; document.getElementById('success-city').value = parsedData.city || ''; switchTab('forms'); const successCard = document.getElementById('success-card'); successCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); successCard.classList.add('ring-2', 'ring-green-500'); setTimeout(() => { successCard.classList.remove('ring-2', 'ring-green-500'); }, 2500); }
-        window.updateBoStatus = function(timestamp, newStatus) { let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]'); const logIndex = allLogs.findIndex(l => l.timestamp === timestamp); if (logIndex !== -1) { allLogs[logIndex].bo_status = newStatus; allLogs[logIndex].bo_status_timestamp = new Date().toISOString(); localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs)); refreshView(); } else { alert('Erro: Registro não encontrado.'); } }
+        
+        // CORREÇÃO: Função de atualizar agora usa o ID único do registro.
+        window.updateBoStatus = function(recordId, newStatus) {
+            let allLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]');
+            const logIndex = allLogs.findIndex(l => l.id === recordId);
+            if (logIndex !== -1) {
+                allLogs[logIndex].bo_status = newStatus;
+                allLogs[logIndex].bo_status_timestamp = new Date().toISOString();
+                localStorage.setItem(CAPIVAIQ_KEY, JSON.stringify(allLogs));
+                refreshView();
+            } else {
+                alert('Erro: Registro não encontrado.');
+            }
+        }
+
         window.removeCity = function(cityName) { if (!confirm(`Remover "${cityName}" da lista?`)) return; let cities = getCities(); saveCities(cities.filter(c => c !== cityName)); renderCityListInModal(); populateCityDatalist(); }
         window.removeUser = function(userName) { if (!confirm(`Remover "${userName}" da lista?`)) return; let users = getUsers(); saveUsers(users.filter(u => u !== userName)); renderUserListInModal(); populateUsersSelects(); }
         window.removePushAction = function(group, action) { if (!confirm(`Remover "${action}" do grupo "${group}"?`)) return; let actions = getPushActions(); actions[group] = actions[group].filter(a => a !== action); if (actions[group].length === 0) { delete actions[group]; } savePushActions(actions); renderPushActionsInModal(); populatePushActionsSelect(); }
@@ -265,14 +308,15 @@
                 const cityResistances = cityLogs.filter(l => l.type === 'resistance');
                 const citySuccesses = cityLogs.filter(l => l.type === 'success');
                 
+                // CORREÇÃO: Botões de ação agora usam o ID único do registro.
                 const deleteBtn = (action) => `<button onclick="${action}" class="w-6 h-6 bg-gray-700 text-white rounded-md hover:bg-red-600 transition-colors flex-shrink-0 text-xs">X</button>`;
-                const renderLogItem = (log, type, icon, color) => { const logData = encodeURIComponent(JSON.stringify({orderId: log.orderId, storeName: log.storeName, city: log.city})); let buttons = `<div class="flex items-center gap-2">${deleteBtn(`deleteCapivaiqRecord(${log.timestamp})`)}</div>`; if (type !== 'Sucesso') { buttons = `<div class="flex items-center gap-2"><button onclick="sendToSuccessForm('${logData}')" class="bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-1 px-2 rounded-md" title="Concluir Registro">Concluir</button>${deleteBtn(`deleteCapivaiqRecord(${log.timestamp})`)}</div>`; } const recordTime = new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); const userText = log.user ? `<span class="inline-flex items-center gap-1.5">(por <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${log.user}</strong>)</span>` : ''; return `<div class="bg-${color}-900/50 p-2 rounded-md flex justify-between items-center gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - ${icon} ${type}: ${log.detail || ''} ${userText}</span> ${buttons}</div>`; };
+                const renderLogItem = (log, type, icon, color) => { const logData = encodeURIComponent(JSON.stringify({orderId: log.orderId, storeName: log.storeName, city: log.city})); let buttons = `<div class="flex items-center gap-2">${deleteBtn(`deleteCapivaiqRecord('${log.id}')`)}</div>`; if (type !== 'Sucesso') { buttons = `<div class="flex items-center gap-2"><button onclick="sendToSuccessForm('${logData}')" class="bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-1 px-2 rounded-md" title="Concluir Registro">Concluir</button>${deleteBtn(`deleteCapivaiqRecord('${log.id}')`)}</div>`; } const recordTime = new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); const userText = log.user ? `<span class="inline-flex items-center gap-1.5">(por <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${log.user}</strong>)</span>` : ''; return `<div class="bg-${color}-900/50 p-2 rounded-md flex justify-between items-center gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - ${icon} ${type}: ${log.detail || ''} ${userText}</span> ${buttons}</div>`; };
                 
                 let cardHTML = `<div class="bg-[#1a1a2e] rounded-xl shadow-lg flex flex-col city-card"><h3 class="bg-[#2a2a4e] text-[#00c6ff] p-4 text-center font-bold text-xl">${city}</h3><div class="p-4 space-y-4 flex-grow">`;
                 
                 cardHTML += `<div><h4 class="font-semibold text-[#9333ea] border-b border-gray-700 pb-1 mb-2">Operações de Praça (${periodLabel})</h4><div class="space-y-2">`;
                 if (cityPushes.length > 0) { cityPushes.forEach(p => { const sent = new Date(p.sentAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); const isFee = isFeeAction(p.action); const label = isFee ? 'Ativada' : 'Enviado'; const pushDateKey = p.date ? PUSH_KEY_PREFIX + p.date : getTodayPushKey(); cardHTML += `<div class="bg-[#2a2a4e]/60 p-2 rounded-md flex justify-between items-center gap-2 text-sm"><div><p><strong>Ação:</strong> ${p.action} (${p.reason})</p><p class="text-xs text-gray-400">${label} às ${sent}</p>`; if (p.user) { cardHTML += `<p class="text-xs text-gray-400 flex items-center gap-1.5">por: <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${p.user}</strong></p>`; } if (isFee) { if (!p.isActive && p.deactivatedAt) { cardHTML += `<p class="text-xs text-yellow-400">Desativada. Duração: ${formatTimeDiff(new Date(p.deactivatedAt) - new Date(p.sentAt))}</p>`; } else if (p.isActive) { cardHTML += `<p class="text-xs text-green-400">Taxa ativa.</p>`; } } cardHTML += `</div> ${deleteBtn(`deletePushRecord(${p.id},'${city}', '${pushDateKey}')`)}</div>`; }); }
-                if (cityBOs.length > 0) { cityBOs.forEach(d => { const recordTime = new Date(d.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); const deleteButton = deleteBtn(`deleteCapivaiqRecord(${d.timestamp})`); const acao1Text = d.acao1 ? `<br><span class="text-xs text-gray-400 font-light italic">${d.acao1}</span>` : ''; const userText = d.user ? `<span class="inline-flex items-center gap-1.5">(por <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${d.user}</strong>)</span>` : ''; let itemHTML = ''; if (!d.bo_status) { const detail = `B.O. #${d.id_entrega} (${d.city}) c/ ${d.entregador}${acao1Text}`; const actionButtons = `<div class="flex items-center gap-1 mt-2"><button onclick="updateBoStatus(${d.timestamp}, 'finalizado')" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded-md">✅ Finalizado</button><button onclick="updateBoStatus(${d.timestamp}, 'cancelado')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md">❌ Cancelado</button></div>`; itemHTML = `<div class="bg-orange-900/50 p-2 rounded-md"><div class="flex justify-between items-start gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - 🛵 ${detail} ${userText}</span> ${deleteButton}</div>${actionButtons}</div>`; } else { const statusTime = new Date(d.bo_status_timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); let bgColor, detail; if (d.bo_status === 'finalizado') { bgColor = 'bg-green-900/50'; detail = `✅ B.O. #${d.id_entrega} (${d.city}) - FINALIZADO às ${statusTime}${acao1Text}`; } else { bgColor = 'bg-red-900/50'; detail = `❌ B.O. #${d.id_entrega} (${d.city}) - CANCELADO às ${statusTime}${acao1Text}`; } itemHTML = `<div class="${bgColor} p-2 rounded-md flex justify-between items-center gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - ${detail} ${userText}</span>${deleteButton}</div>`; } cardHTML += itemHTML; }); }
+                if (cityBOs.length > 0) { cityBOs.forEach(d => { const recordTime = new Date(d.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); const deleteButton = deleteBtn(`deleteCapivaiqRecord('${d.id}')`); const acao1Text = d.acao1 ? `<br><span class="text-xs text-gray-400 font-light italic">${d.acao1}</span>` : ''; const userText = d.user ? `<span class="inline-flex items-center gap-1.5">(por <img src="${USER_ICON_URL}" class="h-4 w-auto"> <strong>${d.user}</strong>)</span>` : ''; let itemHTML = ''; if (!d.bo_status) { const detail = `B.O. #${d.id_entrega} (${d.city}) c/ ${d.entregador}${acao1Text}`; const actionButtons = `<div class="flex items-center gap-1 mt-2"><button onclick="updateBoStatus('${d.id}', 'finalizado')" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded-md">✅ Finalizado</button><button onclick="updateBoStatus('${d.id}', 'cancelado')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md">❌ Cancelado</button></div>`; itemHTML = `<div class="bg-orange-900/50 p-2 rounded-md"><div class="flex justify-between items-start gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - 🛵 ${detail} ${userText}</span> ${deleteButton}</div>${actionButtons}</div>`; } else { const statusTime = new Date(d.bo_status_timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); let bgColor, detail; if (d.bo_status === 'finalizado') { bgColor = 'bg-green-900/50'; detail = `✅ B.O. #${d.id_entrega} (${d.city}) - FINALIZADO às ${statusTime}${acao1Text}`; } else { bgColor = 'bg-red-900/50'; detail = `❌ B.O. #${d.id_entrega} (${d.city}) - CANCELADO às ${statusTime}${acao1Text}`; } itemHTML = `<div class="${bgColor} p-2 rounded-md flex justify-between items-center gap-2 text-sm"><span><span class="font-bold">${recordTime}</span> - ${detail} ${userText}</span>${deleteButton}</div>`; } cardHTML += itemHTML; }); }
                 if (cityPushes.length === 0 && cityBOs.length === 0) { cardHTML += `<p class="text-sm text-gray-500">Nenhuma.</p>`; }
                 cardHTML += `</div></div>`;
                 
@@ -365,7 +409,10 @@
             if (!localStorage.getItem(USERS_KEY)) saveUsers(DEFAULT_USERS);
             
             document.getElementById('current-week').textContent = getWeekId();
-            buildStoreCityMap();
+            
+            const initialLogs = JSON.parse(localStorage.getItem(CAPIVAIQ_KEY) || '[]');
+            buildStoreCityMap(initialLogs);
+
             populateCityDatalist();
             populatePushActionsSelect();
             populateUsersSelects();
@@ -381,11 +428,86 @@
             const autocompleteHandler = (e) => { const storeName = e.target.value.trim(); const form = e.target.closest('form'); const cityInput = form.querySelector('[id$="-city"]'); if (storeName && storeCityMap[storeName] && cityInput && cityInput.value === '') { cityInput.value = storeCityMap[storeName]; } };
             ['delay-store-name', 'resistance-store-name', 'success-store-name'].forEach(id => document.getElementById(id).addEventListener('input', autocompleteHandler));
 
-            document.getElementById('push-form').addEventListener('submit', (e) => { e.preventDefault(); const form = e.target, cityName = form.elements['city-name'].value.trim().replace(/\b\w/g, l => l.toUpperCase()), action = form.elements['action-select'].value, user = form.elements['user-select'].value; if (!cityName) return; const todayPushKey = getTodayPushKey(); let pushHistory = JSON.parse(localStorage.getItem(todayPushKey) || '{}'); if (isFeeAction(action) && pushHistory[cityName]) { const nowISO = new Date().toISOString(); pushHistory[cityName].forEach(p => { if (p.isActive) { p.isActive = false; p.deactivatedAt = nowISO; } }); } if (!pushHistory[cityName]) pushHistory[cityName] = []; pushHistory[cityName].push({ id: Date.now(), user, action, reason: form.elements['reason-select'].value, sentAt: new Date().toISOString(), deactivatedAt: null, isActive: isFeeAction(action) }); savePushData(todayPushKey, pushHistory); renderCurrentDayView(); form.reset(); form.elements['city-name'].focus(); showToast("Salvo com Sucesso!"); });
-            document.getElementById('form-problem').addEventListener('submit', (e) => { e.preventDefault(); const form = e.target; const problemType = form.querySelector('input[name="problem_type"]:checked').value; const now = new Date(); const data = { type: 'delay', weekId: getWeekId(now), timestamp: now.getTime(), subtype: problemType, user: document.getElementById('responsible-user-select').value }; if (problemType === 'atraso_loja') { data.orderId = form.elements['delay-order-id'].value; data.storeName = form.elements['delay-store-name'].value; data.city = form.elements['delay-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase()); data.online = form.elements['delay-online'].value; data.enRoute = form.elements['delay-enroute'].value; data.notes = form.elements['delay-notes'].value; } else { const acao1Value = form.elements['bo-acao1'].value.trim(); data.entregador = form.elements['bo-entregador'].value; data.telefone = form.elements['bo-telefone'].value; data.id_entrega = form.elements['bo-id-entrega'].value; data.city = form.elements['bo-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase()); data.acao1 = acao1Value ? 'MB🐦- ' + acao1Value : ''; data.acao2 = form.elements['bo-acao2'].value; data.resultado_entregador = form.elements['bo-resultado-entregador'].value; data.orderId = data.id_entrega; data.storeName = "N/A"; data.bo_status = null; data.bo_status_timestamp = null; } saveCapivaiqLog(data); renderCurrentDayView(); form.reset(); e.target.querySelector('#bo-paste-data').value = ''; showToast("Salvo com Sucesso!"); });
-            const handleCapivaiqForm = (form, type) => { const now = new Date(); const city = form.elements[`${type}-city`].value.trim().replace(/\b\w/g, l => l.toUpperCase()); const data = { type, weekId: getWeekId(now), timestamp: now.getTime(), orderId: form.elements[`${type}-order-id`].value, storeName: form.elements[`${type}-store-name`].value, city, user: document.getElementById('responsible-user-select').value}; if (type === 'resistance') { data.reason = form.querySelector('input[name="resistance-reason"]:checked')?.value || 'Não especificado'; } else if (type === 'success') { const engagedWith = Array.from(form.querySelectorAll('input[name="engagement-action"]:checked')).map(cb => cb.value); data.engagementAction = engagedWith.length > 0 ? engagedWith.join(', ') : 'Não especificado'; } saveCapivaiqLog(data); renderCurrentDayView(); form.reset(); if(form.id === 'form-resistance') form.querySelector('#resistance-paste-data').value = ''; showToast("Salvo com Sucesso!"); };
-            document.getElementById('form-resistance').addEventListener('submit', e => { e.preventDefault(); handleCapivaiqForm(e.target, 'resistance'); });
-            document.getElementById('form-success').addEventListener('submit', e => { e.preventDefault(); handleCapivaiqForm(e.target, 'success'); });
+            document.getElementById('push-form').addEventListener('submit', (e) => { e.preventDefault(); const form = e.target, cityName = form.elements['city-name'].value.trim().replace(/\b\w/g, l => l.toUpperCase()), action = form.elements['action-select'].value, user = form.elements['user-select'].value; if (!cityName) return; const todayPushKey = getTodayPushKey(); let pushHistory = JSON.parse(localStorage.getItem(todayPushKey) || '{}'); if (isFeeAction(action) && pushHistory[cityName]) { const nowISO = new Date().toISOString(); pushHistory[cityName].forEach(p => { if (p.isActive) { p.isActive = false; p.deactivatedAt = nowISO; } }); } if (!pushHistory[cityName]) pushHistory[cityName] = []; pushHistory[cityName].push({ id: Date.now(), user, action, reason: form.elements['reason-select'].value, sentAt: new Date().toISOString(), deactivatedAt: null, isActive: isFeeAction(action) }); savePushData(todayPushKey, pushHistory); refreshView(); form.reset(); form.elements['city-name'].focus(); showToast("Salvo com Sucesso!"); });
+            
+            // CORREÇÃO: Lógica de salvamento de todos os formulários de eventos foi unificada para garantir consistência e corrigir o bug.
+            const handleEventFormSubmit = (form) => {
+                const now = new Date();
+                const user = document.getElementById('responsible-user-select').value;
+                const baseData = {
+                    id: `${now.getTime()}-${Math.floor(Math.random() * 1000)}`, // ID Único e Robusto
+                    weekId: getWeekId(now),
+                    timestamp: now.getTime(),
+                    user: user
+                };
+
+                let data;
+                // Formulário de Problemas (Atraso/B.O.)
+                if (form.id === 'form-problem') {
+                    const problemType = form.querySelector('input[name="problem_type"]:checked').value;
+                    data = { ...baseData, type: 'delay', subtype: problemType };
+                    if (problemType === 'atraso_loja') {
+                        data.orderId = form.elements['delay-order-id'].value;
+                        data.storeName = form.elements['delay-store-name'].value;
+                        data.city = form.elements['delay-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase());
+                        data.online = form.elements['delay-online'].value;
+                        data.enRoute = form.elements['delay-enroute'].value;
+                        data.notes = form.elements['delay-notes'].value;
+                    } else { // B.O.
+                        const acao1Value = form.elements['bo-acao1'].value.trim();
+                        data.entregador = form.elements['bo-entregador'].value;
+                        data.telefone = form.elements['bo-telefone'].value;
+                        data.id_entrega = form.elements['bo-id-entrega'].value;
+                        data.city = form.elements['bo-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase());
+                        data.acao1 = acao1Value ? 'MB🐦- ' + acao1Value : '';
+                        data.acao2 = form.elements['bo-acao2'].value;
+                        data.resultado_entregador = form.elements['bo-resultado-entregador'].value;
+                        data.orderId = data.id_entrega;
+                        data.storeName = "N/A";
+                        data.bo_status = null;
+                        data.bo_status_timestamp = null;
+                    }
+                }
+                // Formulário de Resistência
+                else if (form.id === 'form-resistance') {
+                    data = {
+                        ...baseData,
+                        type: 'resistance',
+                        orderId: form.elements['resistance-order-id'].value,
+                        storeName: form.elements['resistance-store-name'].value,
+                        city: form.elements['resistance-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase()),
+                        reason: form.querySelector('input[name="resistance-reason"]:checked')?.value || 'Não especificado'
+                    };
+                }
+                // Formulário de Sucesso
+                else if (form.id === 'form-success') {
+                     const engagedWith = Array.from(form.querySelectorAll('input[name="engagement-action"]:checked')).map(cb => cb.value);
+                    data = {
+                        ...baseData,
+                        type: 'success',
+                        orderId: form.elements['success-order-id'].value,
+                        storeName: form.elements['success-store-name'].value,
+                        city: form.elements['success-city'].value.trim().replace(/\b\w/g, l => l.toUpperCase()),
+                        engagementAction: engagedWith.length > 0 ? engagedWith.join(', ') : 'Não especificado'
+                    };
+                }
+
+                if (data) {
+                    saveCapivaiqLog(data);
+                    refreshView();
+                    form.reset();
+                    // Limpa campos de colar dados, se existirem
+                    if (form.querySelector('[id$="-paste-data"]')) {
+                        form.querySelector('[id$="-paste-data"]').value = '';
+                    }
+                    showToast("Salvo com Sucesso!");
+                }
+            };
+
+            document.getElementById('form-problem').addEventListener('submit', e => { e.preventDefault(); handleEventFormSubmit(e.target); });
+            document.getElementById('form-resistance').addEventListener('submit', e => { e.preventDefault(); handleEventFormSubmit(e.target); });
+            document.getElementById('form-success').addEventListener('submit', e => { e.preventDefault(); handleEventFormSubmit(e.target); });
+
             document.getElementById('city-search-input').addEventListener('input', (e) => { const searchTerm = e.target.value.toLowerCase(); const cards = document.querySelectorAll('#dashboard-container .city-card'); let visibleCount = 0; cards.forEach(card => { const cityName = card.querySelector('h3').textContent.toLowerCase(); const isVisible = cityName.includes(searchTerm); card.classList.toggle('hidden', !isVisible); if(isVisible) visibleCount++; }); document.getElementById('no-search-results').classList.toggle('hidden', visibleCount > 0 || cards.length === 0 || searchTerm.length === 0 ); });
         });
         
